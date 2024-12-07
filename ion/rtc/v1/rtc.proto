@@ -1,0 +1,115 @@
+syntax = "proto3";
+
+option go_package = "github.com/pilab-dev/ion-proto/pkg/pb/rtc/v1;rtcv1";
+
+package rtc;
+
+service RTC {
+  rpc Signal(stream Signalling) returns (stream Signalling) {}
+}
+
+message JoinRequest {
+  string sid = 1;
+  string uid = 2;
+  map<string, string> parameters = 3;
+}
+
+message JoinReply {
+  bool success = 1;
+  Error error = 2;
+}
+
+enum Target {
+  PUBLISHER = 0;
+  SUBSCRIBER = 1;
+}
+
+message SessionDescription {
+  Target target = 1;
+  // 'offer' | 'answer'
+  string type = 2;
+  // sdp contents
+  string sdp = 3;
+}
+
+message Trickle {
+  Target target = 1;
+  string init = 2;
+}
+
+message Error {
+  int32 code = 1;
+  string reason = 2;
+}
+
+message Simulcast {
+  // 'f' | 'h' | 'q'
+  string rid = 1;
+  // 'send' | 'recv'
+  string direction = 2;
+  string parameters = 3;
+};
+
+message Track {
+  // track id
+  string id = 1;
+  // stream id
+  string stream_id = 2;
+  // 'audio' | 'video' | 'data'
+  string kind = 3;
+  // true | false
+  bool muted = 4;
+  // rid for video track
+  string rid = 5;
+  // Simulcast
+  repeated Simulcast simulcast = 6;
+}
+
+message TrackEvent {
+  enum State {
+    ADD = 0;
+    REMOVE = 1;
+  }
+  State state = 2;
+   // user id
+  string uid = 3;
+  repeated Track tracks = 4;
+}
+
+message Subscription {
+  repeated string trackIds = 1;
+  bool subscribe = 2;
+}
+
+message MuteTrack {
+  repeated string trackIds = 1;
+  bool muted = 2;
+}
+
+message SwitchScalabilityLayer {
+  string trackId = 1;
+  uint32 spatialLayer = 2;
+  uint32 temporalLayer = 3;
+}
+
+message UpdateSettings {
+  oneof command {
+    Subscription subscription = 1;
+    SwitchScalabilityLayer switchLayer = 2;
+    MuteTrack muteTrack = 3;
+  }
+}
+
+message Signalling {
+  oneof payload {
+    JoinRequest join = 1;
+    JoinReply reply = 2;
+    Error error = 3;
+
+    SessionDescription description = 4;
+    Trickle trickle = 5;
+
+    UpdateSettings updateSettings = 6;
+    TrackEvent trackEvent = 7;
+  }
+}
