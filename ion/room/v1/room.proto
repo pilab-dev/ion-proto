@@ -20,13 +20,13 @@ service RoomService {
 }
 
 service RoomSignal {
-  // Signal
-  rpc Signal(stream Request) returns (stream Reply) {}
+  // Signal API for room
+  rpc Signal(stream SignalRequest) returns (stream SignalReply) {}
 }
 
 enum ErrorType {
   None = 0;
-  UnkownError = 1;
+  UnknownError = 1;
   PermissionDenied = 2;
   ServiceUnavailable = 3;
   RoomLocked = 4;
@@ -43,7 +43,7 @@ message Error {
   string reason = 2;
 }
 
-message Request {
+message SignalRequest {
   oneof payload {
     JoinRequest join = 1;
     LeaveRequest leave = 2;
@@ -52,7 +52,7 @@ message Request {
   }
 }
 
-message Reply {
+message SignalReply {
   oneof payload {
     JoinReply join = 1;
     LeaveReply leave = 2;

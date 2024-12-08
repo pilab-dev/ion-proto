@@ -4,112 +4,182 @@ option go_package = "github.com/pilab-dev/ion-proto/pkg/pb/rtc/v1;rtcv1";
 
 package rtc;
 
+// RTC is the service for real-time communication via WebRTC.
 service RTC {
-  rpc Signal(stream Signalling) returns (stream Signalling) {}
+  rpc Signal(stream Request) returns (stream Reply) {}
 }
 
+// JoinRequest is the request to join a session. It contains the session description.
 message JoinRequest {
   string sid = 1;
   string uid = 2;
-  map<string, string> parameters = 3;
+  map<string, string> config = 3;
+  SessionDescription description = 4;
 }
 
+// JoinReply is the reply to join a session. It contains the session description.
 message JoinReply {
   bool success = 1;
   Error error = 2;
+  SessionDescription description = 3;
 }
 
+// Target is the target of the message.
 enum Target {
   PUBLISHER = 0;
   SUBSCRIBER = 1;
 }
 
-message SessionDescription {
-  Target target = 1;
-  // 'offer' | 'answer'
-  string type = 2;
-  // sdp contents
-  string sdp = 3;
+// MediaType is the type of media. It is used to distinguish different types of media.
+enum MediaType {
+  // MediaUnknown is the unknown media type.
+  MediaUnknown = 0;
+  // UserMedia is the user media type.
+  UserMedia = 1;
+  // ScreenCapture is the screen capture media type.
+  ScreenCapture = 2;
+  // Canvas is the canvas media type. 
+  Canvas = 3;
+  // Streaming is the streaming media type.
+  Streaming = 4;
+  // VoIP is the VoIP media type. (currently not used)
+  VoIP = 5;
 }
 
+// TrackInfo is the information of a track.
+message TrackInfo {
+  // basic info
+  string id = 1;
+  // Kind 'audio' | 'video' | 'data'
+  string kind = 2;
+  // Muted or not
+  bool muted = 3;
+  // Type of media
+  MediaType type = 4;
+  // StreamID is the ID of the stream that the track belongs to.
+  string streamId = 5;
+  // Label is the label of the track.
+  string label = 6;
+
+  // extra info
+
+  // Layer is the simulcast or svc layer of the track.
+  string layer = 7;  // simulcast or svc layer
+  // Width is the width of the track.
+  uint32 width = 8;
+  // Height is the height of the track.
+  uint32 height = 9;
+  // FrameRate is the frame rate of the track.
+  uint32 frameRate = 10;
+}
+
+// SessionDescription is the description of the session (offer/answer).
+message SessionDescription {
+  Target target = 1;
+  // Type is the type of the description. Can be 'offer' | 'answer'.
+  string type = 2;
+  // SDP contents.
+  string sdp = 3;
+  // TrackInfos is the information of the tracks. (metadata).
+  repeated TrackInfo trackInfos = 4;
+}
+
+// Trickle is the trickle message.
 message Trickle {
   Target target = 1;
   string init = 2;
 }
 
+// Error is the custom error message type for RTC.
 message Error {
   int32 code = 1;
   string reason = 2;
 }
 
-message Simulcast {
-  // 'f' | 'h' | 'q'
-  string rid = 1;
-  // 'send' | 'recv'
-  string direction = 2;
-  string parameters = 3;
-};
-
-message Track {
-  // track id
-  string id = 1;
-  // stream id
-  string stream_id = 2;
-  // 'audio' | 'video' | 'data'
-  string kind = 3;
-  // true | false
-  bool muted = 4;
-  // rid for video track
-  string rid = 5;
-  // Simulcast
-  repeated Simulcast simulcast = 6;
-}
-
+// TrackEvent is the event of the track.
 message TrackEvent {
   enum State {
     ADD = 0;
-    REMOVE = 1;
+    UPDATE = 1;
+    REMOVE = 2;
   }
-  State state = 2;
-   // user id
-  string uid = 3;
-  repeated Track tracks = 4;
+  // State of the track
+  State state = 1;
+  // UID is the ID of the user.
+  string uid = 2;
+  // Tracks are the track infos.
+  repeated TrackInfo tracks = 3;
 }
 
-message Subscription {
-  repeated string trackIds = 1;
-  bool subscribe = 2;
+// Subscription is the subscription message.
+message Subscription{
+  // TrackID is the ID of the track.
+  string trackId = 2;
+  // Mute or not
+  bool mute = 3; // mute track or not
+  bool subscribe = 4; // sub track or not
+  string layer = 5;  // simulcast or svc layer
 }
 
-message MuteTrack {
-  repeated string trackIds = 1;
-  bool muted = 2;
+// SubscriptionRequest is the request to subscribe/unsubscribe tracks.
+message SubscriptionRequest {
+  repeated Subscription subscriptions = 1;
 }
 
-message SwitchScalabilityLayer {
-  string trackId = 1;
-  uint32 spatialLayer = 2;
-  uint32 temporalLayer = 3;
+// SubscriptionReply is the reply to subscribe/unsubscribe tracks.
+message SubscriptionReply {
+  bool success = 1;
+  Error error = 2;
 }
 
-message UpdateSettings {
-  oneof command {
-    Subscription subscription = 1;
-    SwitchScalabilityLayer switchLayer = 2;
-    MuteTrack muteTrack = 3;
-  }
+// UpdateTrackReply is the reply to update track.
+message UpdateTrackReply {
+  bool success = 1;
+  Error error = 2;
 }
 
-message Signalling {
+// ActiveSpeaker is the active speaker message.
+message ActiveSpeaker {
+  repeated AudioLevelSpeaker speakers = 1;
+}
+
+// AudioLevelSpeaker is the audio level speaker message.
+message AudioLevelSpeaker {
+  string sid = 1;
+  // audio level
+  float level = 2;
+  // speaker active or not
+  bool active = 3;
+}
+
+// Request is the request message of the RTC service stream.
+message Request {
   oneof payload {
+    // Basic API Request
     JoinRequest join = 1;
-    JoinReply reply = 2;
-    Error error = 3;
+    SessionDescription description = 2;
+    Trickle trickle = 3;
 
-    SessionDescription description = 4;
-    Trickle trickle = 5;
+    // Command
+    SubscriptionRequest subscription = 4;
+  }
+}
 
-    UpdateSettings updateSettings = 6;
-    TrackEvent trackEvent = 7;
+// Reply is the reply message of the RTC service stream.
+message Reply {
+  oneof payload {
+    // Basic API Reply
+    JoinReply join = 1;
+    SessionDescription description = 2;
+    Trickle trickle = 3;
+
+    // Event
+    TrackEvent trackEvent = 4;
+
+    // Command Reply
+    SubscriptionReply subscription = 5;
+
+    // Error
+    Error error = 7;
   }
 }
